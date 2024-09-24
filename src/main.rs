@@ -1,9 +1,12 @@
 use clap::Parser;
-use image::{RgbImage, Rgb};
+use image::RgbImage;
 // use rayon::prelude::*;
 
 mod vec;
-use vec::{Vec3, Color};
+mod ray;
+
+use vec::{Vec3, Point3, Color};
+use ray::Ray;
 
 
 // See https://github.com/heyjuvi/raytracinginrust
@@ -17,7 +20,7 @@ struct Args {
     width: u32,
 
     /// Image height
-    #[arg(short='H', long, default_value_t = 256)]
+    #[arg(short='H', long, default_value_t = 144)]
     height: u32,
 
     /// Output path
@@ -26,6 +29,12 @@ struct Args {
 }
 
 
+
+fn ray_color(r: &Ray) -> Color {
+    let unit_direction = r.direction().normalized();
+    let s = 0.5 * (unit_direction.y() + 1.0);
+    (1.0 - s) * Color::new(1.0, 1.0, 1.0) + s * Color::new(0.5, 0.7, 1.0)
+}
 
 
 
@@ -36,22 +45,33 @@ fn main() {
     // set up an ImageBuffer of Pixels
     let mut img = RgbImage::new(args.width, args.height);
 
+    // set up viewport
+    let aspect_ratio = (args.width as f64) / (args.height as f64);
+    let viewport_height = 2.0;
+    let viewport_width = aspect_ratio * viewport_height;
+    let focal_length = 1.0;
+
+    let origin = Point3::new(0.0, 0.0, 0.0);
+    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
+    let vertical = Vec3::new(0.0, viewport_height, 0.0);
+    let lower_left_corner = origin - (horizontal / 2.0) - (vertical / 2.0) - Vec3::new(0.0, 0.0, focal_length);
+
+
     // use par_enumerate_pixels_mut for parallel execution
     img.enumerate_pixels_mut()
         .for_each(|(i, jj, pixel)|{
-            let j = 255 - jj;
-
-            let px_color = Color::new(
-                (i as f64) / ((args.width - 1) as f64),
-                (j as f64) / ((args.height - 1) as f64),
-                0.25
-            );
-
             // NOTE: PNG origin is (0,0) -> Top Left
             //       flip it so the img coords are
             //       aligned with the camera
-            *pixel = px_color.to_rgb();
+            let j = 255 - jj;
 
+            let u = (i as f64) / ((args.width - 1) as f64);
+            let v = (j as f64) / ((args.height- 1) as f64);
+
+            let r = Ray::new(origin, lower_left_corner + (u * horizontal) + (v * vertical) - origin);
+
+            let pixel_color = ray_color(&r);
+            *pixel = pixel_color.to_rgb();
         });
 
     img.save(args.outpath).unwrap();
