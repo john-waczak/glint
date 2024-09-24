@@ -1,50 +1,57 @@
+use clap::Parser;
 use image::{RgbImage, Rgb};
-use std::path::Path;
 // use rayon::prelude::*;
 
-fn main() {
+mod vec;
+use vec::{Vec3, Color};
 
-    const IMAGE_WIDTH:  u32 = 256;
-    const IMAGE_HEIGHT: u32 = 256;
-    let img_path = Path::new("image.png");
+
+
+/// `glint`, a simple raytracer.
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Image width
+    #[arg(short='W', long, default_value_t = 256)]
+    width: u32,
+
+    /// Image height
+    #[arg(short='H', long, default_value_t = 256)]
+    height: u32,
+
+    /// Output path
+    #[arg(short, long, default_value_t = String::from("image.png"))]
+    outpath: String
+}
+
+
+
+
+
+fn main() {
+    // parse arguments
+    let args = Args::parse();
 
     // set up an ImageBuffer of Pixels
-    let mut img = RgbImage::new(IMAGE_WIDTH, IMAGE_HEIGHT);
+    let mut img = RgbImage::new(args.width, args.height);
 
-
-    // Render Loop (can we parallelize this?)
-    // https://users.rust-lang.org/t/getting-artifacts-while-making-the-ray-tracing-parallel/106981/11
-    // img.par_enumerate_pixels_mut()
-    //     .for_each(|(i, jj, pixel)| {
-    //         let j = 255 - jj;
-
-    //         let r = 255.999 * (i as f64) / ((IMAGE_WIDTH - 1) as f64);
-    //         let g = 255.999 * (j as f64) / ((IMAGE_HEIGHT - 1) as f64);
-    //         let b = 255.999 * 0.25;
-
-
-    //         // NOTE: PNG origin is (0,0) -> Top Left
-    //         //       flip it so the img coords are
-    //         //       aligned with the camera
-    //         *pixel = Rgb([r as u8, g as u8, b as u8]);
-    //     });
-
-
+    // use par_enumerate_pixels_mut for parallel execution
     img.enumerate_pixels_mut()
         .for_each(|(i, jj, pixel)|{
             let j = 255 - jj;
 
-            let r = 255.999 * (i as f64) / ((IMAGE_WIDTH - 1) as f64);
-            let g = 255.999 * (j as f64) / ((IMAGE_HEIGHT - 1) as f64);
-            let b = 255.999 * 0.25;
-
+            let px_color = Color::new(
+                (i as f64) / ((args.width - 1) as f64),
+                (j as f64) / ((args.height - 1) as f64),
+                0.25
+            );
 
             // NOTE: PNG origin is (0,0) -> Top Left
             //       flip it so the img coords are
             //       aligned with the camera
-            *pixel = Rgb([r as u8, g as u8, b as u8]);
+            *pixel = px_color.to_rgb();
 
         });
 
-    img.save(img_path).unwrap();
+    img.save(args.outpath).unwrap();
 }
