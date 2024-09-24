@@ -6,6 +6,7 @@ mod vec;
 use vec::{Vec3, Color};
 
 
+// See https://github.com/heyjuvi/raytracinginrust
 
 /// `glint`, a simple raytracer.
 #[derive(Parser, Debug)]
