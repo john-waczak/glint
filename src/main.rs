@@ -4,9 +4,14 @@ use image::RgbImage;
 
 mod vec;
 mod ray;
+mod hit;
+mod sphere;
 
 use vec::{Vec3, Point3, Color};
 use ray::Ray;
+use hit::{Hit, World};
+use sphere::Sphere;
+
 
 
 // See https://github.com/heyjuvi/raytracinginrust
@@ -30,33 +35,14 @@ struct Args {
 
 
 
-fn hit_sphere(center: Point3, radius: f64, r: &Ray) -> f64 {
-    let oc = r.origin() - center;
-    let a = r.direction().dot(r.direction());
-    let b = 2.0 * oc.dot(r.direction());
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-
-    if discriminant < 0.0 {
-        -1.0
+fn ray_color(r: &Ray, world: &World) -> Color {
+    if let Some(rec) = world.hit(r, 0.0, f64::INFINITY) {
+        0.5 * (rec.normal + Color::new(1.0, 1.0, 1.0))
     } else {
-        (-b - discriminant.sqrt()) / (2.0 * a)
+        let unit_direction = r.direction().normalized();
+        let t = 0.5 * (unit_direction.y() + 1.0);
+        (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
     }
-}
-
-
-fn ray_color(r: &Ray) -> Color {
-    let t = hit_sphere(Point3::new(0.0, 0.0, -1.0), 0.5, r);
-
-    if t > 0.0 {
-        // color according to normal vector direction
-        let n = (r.at(t) - Point3::new(0.0, 0.0, -1.0)).normalized();
-        return 0.5 * Color::new(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0);
-    }
-
-    let unit_direction = r.direction().normalized();
-    let s = 0.5 * (unit_direction.y() + 1.0);
-    (1.0 - s) * Color::new(1.0, 1.0, 1.0) + s * Color::new(0.5, 0.7, 1.0)
 }
 
 
@@ -66,6 +52,11 @@ fn main() {
 
     // set up an ImageBuffer of Pixels
     let mut img = RgbImage::new(args.width, args.height);
+
+    // World
+    let mut world = World::new();
+    world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     // set up viewport
     let aspect_ratio = (args.width as f64) / (args.height as f64);
@@ -79,8 +70,6 @@ fn main() {
     let lower_left_corner = origin - (horizontal / 2.0) - (vertical / 2.0) - Vec3::new(0.0, 0.0, focal_length);
 
 
-
-    
     // use par_enumerate_pixels_mut for parallel execution
     img.enumerate_pixels_mut()
         .for_each(|(i, jj, pixel)|{
@@ -94,7 +83,7 @@ fn main() {
 
             let r = Ray::new(origin, lower_left_corner + (u * horizontal) + (v * vertical) - origin);
 
-            let pixel_color = ray_color(&r);
+            let pixel_color = ray_color(&r, &world);
             *pixel = pixel_color.to_rgb();
         });
 
