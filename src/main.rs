@@ -10,12 +10,12 @@ mod sphere;
 mod camera;
 mod material;
 
-use vec::{Point3, Color};
+use vec::{Vec3, Point3, Color};
 use ray::Ray;
 use hit::{Hit, World};
 use sphere::Sphere;
 use camera::Camera;
-use material::{Lambertian, Specular};
+use material::{Lambertian, Specular, Dielectric};
 
 // See https://github.com/heyjuvi/raytracinginrust
 
@@ -79,24 +79,38 @@ fn main() {
 
     // Materials
     let mat_ground = Rc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let mat_center = Rc::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
-    let mat_left = Rc::new(Specular::new(Color::new(0.8, 0.8, 0.8)));
-    let mat_right = Rc::new(Specular::new(Color::new(0.8, 0.6, 0.2)));
+    let mat_center = Rc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
+    let mat_left = Rc::new(Dielectric::new(1.5));
+    let mat_left_inner = Rc::new(Dielectric::new(1.5));
 
-    // World
+    let mat_right = Rc::new(Specular::new(Color::new(0.8, 0.6, 0.2), 0.0));
+
+       // World + Objects
     let mut world = World::new();
+
     let sphere_ground = Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, mat_ground);
     let sphere_center = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, mat_center);
     let sphere_left = Sphere::new(Point3::new(-1.0, 0.0, -1.0), 0.5, mat_left);
+    let sphere_left_inner = Sphere::new(Point3::new(-1.0, 0.0, -1.0), -0.45, mat_left_inner);
     let sphere_right = Sphere::new(Point3::new(1.0, 0.0, -1.0), 0.5, mat_right);
 
+
+    // Objects in World
     world.push(Box::new(sphere_ground));
     world.push(Box::new(sphere_center));
     world.push(Box::new(sphere_left));
+    world.push(Box::new(sphere_left_inner));
     world.push(Box::new(sphere_right));
 
     // Camera
-    let cam = Camera::new(args.width, args.height);
+    let cam = Camera::new(
+        Point3::new(-2.0, 2.0, 1.0),
+        Point3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        20.0,
+        args.width,
+        args.height,
+    );
 
     let mut rng = rand::thread_rng();
     // use par_enumerate_pixels_mut for parallel execution

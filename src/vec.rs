@@ -116,9 +116,20 @@ impl Vec3 {
     }
 
 
-    // compute a reflected vector
+    //  ---- REFLECTION & REFRACTION ----
+
+    // incident == reflected
     pub fn reflect(self, n: Vec3) -> Vec3 {
         self - 2.0 * self.dot(n) * n
+    }
+
+    // use snell's law
+    pub fn refract(self, n: Vec3, ni_nt: f64) -> Vec3 {
+        let cos_theta = ((-1.0) * self).dot(n).min(1.0);
+        let r_out_perp = ni_nt * (self + cos_theta * n);
+        let r_out_parallel = -(1.0 - r_out_perp.length().powi(2)).abs().sqrt() * n;
+
+        r_out_perp + r_out_parallel
     }
 }
 
