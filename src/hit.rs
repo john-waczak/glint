@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use super::vec::{Vec3, Point3};
 use super::ray::Ray;
@@ -7,7 +7,7 @@ use super::material::Scatter;
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
-    pub mat: Rc<dyn Scatter>, // need reference counting because all rays *could* hit the material
+    pub mat: Arc<dyn Scatter>, // need reference counting because all rays *could* hit the material
     pub t: f64,
     pub front_face: bool
 }
@@ -26,7 +26,7 @@ impl HitRecord {
 
 
 // Define a trait for all *hit-able* objects
-pub trait Hit {
+pub trait Hit : Send + Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
