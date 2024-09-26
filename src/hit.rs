@@ -1,9 +1,13 @@
+use std::rc::Rc;
+
 use super::vec::{Vec3, Point3};
 use super::ray::Ray;
+use super::material::Scatter;
 
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
+    pub mat: Rc<dyn Scatter>, // need reference counting because all rays *could* hit the material
     pub t: f64,
     pub front_face: bool
 }

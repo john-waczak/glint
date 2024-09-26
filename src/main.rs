@@ -1,19 +1,21 @@
 use clap::Parser;
 use image::RgbImage;
 use rand::prelude::*;
+use std::rc::Rc;
 
 mod vec;
 mod ray;
 mod hit;
 mod sphere;
 mod camera;
+mod material;
 
-use vec::{Vec3, Point3, Color};
+use vec::{Point3, Color};
 use ray::Ray;
 use hit::{Hit, World};
 use sphere::Sphere;
 use camera::Camera;
-
+use material::{Lambertian, Specular};
 
 // See https://github.com/heyjuvi/raytracinginrust
 
@@ -52,17 +54,20 @@ fn ray_color(r: &Ray, world: &World, bounces_left: u64) -> Color {
     }
 
     if let Some(rec) = world.hit(r, 0.001, f64::INFINITY) {
-        // let target = rec.p +rec.normal + Vec3::random_in_unit_sphere();
-        let target = rec.p + rec.normal + Vec3::random_in_unit_sphere().normalized();
-
-        let r = Ray::new(rec.p, target - rec.p);
-        0.5 * ray_color(&r, world, bounces_left - 1)
+        if let Some((attenuation, scattered)) = rec.mat.scatter(r, &rec) {
+            attenuation * ray_color(&scattered, world, bounces_left - 1)
+        } else {
+            Color::new(0.0, 0.0, 0.0)
+        }
     } else {
         let unit_direction = r.direction().normalized();
         let t = 0.5 * (unit_direction.y() + 1.0);
         (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
     }
 }
+
+
+
 
 
 fn main() {
@@ -72,10 +77,23 @@ fn main() {
     // set up an ImageBuffer of Pixels
     let mut img = RgbImage::new(args.width, args.height);
 
+    // Materials
+    let mat_ground = Rc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let mat_center = Rc::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
+    let mat_left = Rc::new(Specular::new(Color::new(0.8, 0.8, 0.8)));
+    let mat_right = Rc::new(Specular::new(Color::new(0.8, 0.6, 0.2)));
+
     // World
     let mut world = World::new();
-    world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
-    world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
+    let sphere_ground = Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, mat_ground);
+    let sphere_center = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, mat_center);
+    let sphere_left = Sphere::new(Point3::new(-1.0, 0.0, -1.0), 0.5, mat_left);
+    let sphere_right = Sphere::new(Point3::new(1.0, 0.0, -1.0), 0.5, mat_right);
+
+    world.push(Box::new(sphere_ground));
+    world.push(Box::new(sphere_center));
+    world.push(Box::new(sphere_left));
+    world.push(Box::new(sphere_right));
 
     // Camera
     let cam = Camera::new(args.width, args.height);

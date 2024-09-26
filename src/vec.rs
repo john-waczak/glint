@@ -109,6 +109,17 @@ impl Vec3 {
             (-1.0) * in_unit_sphere
         }
     }
+
+    pub fn near_zero(self) -> bool {
+        const EPS: f64 = 1.0e-8;
+        self[0].abs() < EPS && self[1].abs() < EPS && self[2].abs() < EPS
+    }
+
+
+    // compute a reflected vector
+    pub fn reflect(self, n: Vec3) -> Vec3 {
+        self - 2.0 * self.dot(n) * n
+    }
 }
 
 
@@ -198,6 +209,31 @@ impl Mul<Vec3> for f64 {
         }
     }
 }
+
+
+
+// Element-wise multiplication
+impl Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            e: [self[0] * other[0], self[1] * other[1], self[2] * other[2]]
+        }
+    }
+}
+
+impl MulAssign<Vec3> for Vec3 {
+    fn mul_assign(&mut self, other: Vec3) -> () {
+        *self = Vec3 {
+            e: [self[0] * other[1], self[1] * other[2], self[2] * other[3]]
+        };
+    }
+}
+
+
+
+
 
 impl Div<f64> for Vec3 {
     type Output = Vec3;
