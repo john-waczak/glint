@@ -1,17 +1,18 @@
 use clap::Parser;
 use image::RgbImage;
-// use rayon::prelude::*;
+use rand::prelude::*;
 
 mod vec;
 mod ray;
 mod hit;
 mod sphere;
+mod camera;
 
 use vec::{Vec3, Point3, Color};
 use ray::Ray;
 use hit::{Hit, World};
 use sphere::Sphere;
-
+use camera::Camera;
 
 
 // See https://github.com/heyjuvi/raytracinginrust
@@ -27,6 +28,10 @@ struct Args {
     /// Image height
     #[arg(short='H', long, default_value_t = 144)]
     height: u32,
+
+    /// Samples per pixel
+    #[arg(short='s', long, default_value_t = 100)]
+    samples_per_pixel: u64,
 
     /// Output path
     #[arg(short, long, default_value_t = String::from("image.png"))]
@@ -58,18 +63,10 @@ fn main() {
     world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
     world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
-    // set up viewport
-    let aspect_ratio = (args.width as f64) / (args.height as f64);
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_length = 1.0;
+    // Camera
+    let cam = Camera::new(args.width, args.height);
 
-    let origin = Point3::new(0.0, 0.0, 0.0);
-    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, viewport_height, 0.0);
-    let lower_left_corner = origin - (horizontal / 2.0) - (vertical / 2.0) - Vec3::new(0.0, 0.0, focal_length);
-
-
+    let mut rng = rand::thread_rng();
     // use par_enumerate_pixels_mut for parallel execution
     img.enumerate_pixels_mut()
         .for_each(|(i, jj, pixel)|{
@@ -78,13 +75,20 @@ fn main() {
             //       aligned with the camera
             let j = args.height - jj;
 
-            let u = (i as f64) / ((args.width - 1) as f64);
-            let v = (j as f64) / ((args.height- 1) as f64);
+            let mut pixel_color = Color::new(0.0, 0.0, 0.0);
 
-            let r = Ray::new(origin, lower_left_corner + (u * horizontal) + (v * vertical) - origin);
+            for _ in 0..args.samples_per_pixel {
+                let random_u: f64 = rng.gen();
+                let random_v: f64 = rng.gen();
 
-            let pixel_color = ray_color(&r, &world);
-            *pixel = pixel_color.to_rgb();
+                let u = ((i as f64) + random_u) / ((args.width - 1) as f64);
+                let v = ((j as f64) + random_v) / ((args.height- 1) as f64);
+
+                let r = cam.get_ray(u, v);
+                pixel_color += ray_color(&r, &world);
+            }
+
+            *pixel = pixel_color.to_rgb(args.samples_per_pixel);
         });
 
     img.save(args.outpath).unwrap();

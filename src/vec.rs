@@ -72,11 +72,12 @@ impl Vec3 {
         self / self.length()
     }
 
-    pub fn to_rgb(self) -> Rgb<u8> {
-        let r = 255.999 * self[0];
-        let g = 255.999 * self[1];
-        let b = 255.999 * self[2];
-        Rgb([r as u8, g as u8, b as u8])
+    pub fn to_rgb(self, samples_per_pixel: u64) -> Rgb<u8> {
+        let r = (256.0 * (self[0] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
+        let g = (256.0 * (self[1] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
+        let b = (256.0 * (self[2] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
+
+        Rgb([r, g, b])
     }
 }
 
