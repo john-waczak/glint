@@ -4,10 +4,12 @@ use std::ops::{Add, AddAssign};
 use std::ops::{Sub, SubAssign};
 use std::ops::{Mul, MulAssign};
 use std::ops::{Div, DivAssign};
+use std::ops::Range;
 
 use std::fmt;
 use std::fmt::Display;
 
+use rand::prelude::*;
 
 use image::Rgb;
 
@@ -73,14 +75,41 @@ impl Vec3 {
     }
 
     pub fn to_rgb(self, samples_per_pixel: u64) -> Rgb<u8> {
-        let r = (256.0 * (self[0] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
-        let g = (256.0 * (self[1] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
-        let b = (256.0 * (self[2] / (samples_per_pixel as f64)).clamp(0.0, 0.999)) as u8;
+        let r = (256.0 * (self[0] / (samples_per_pixel as f64)).sqrt().clamp(0.0, 0.999)) as u8;
+        let g = (256.0 * (self[1] / (samples_per_pixel as f64)).sqrt().clamp(0.0, 0.999)) as u8;
+        let b = (256.0 * (self[2] / (samples_per_pixel as f64)).sqrt().clamp(0.0, 0.999)) as u8;
 
         Rgb([r, g, b])
     }
-}
 
+
+    pub fn random(r: Range<f64>) -> Vec3 {
+        let mut rng = rand::thread_rng();
+
+        Vec3 {
+            e: [rng.gen_range(r.clone()), rng.gen_range(r.clone()), rng.gen_range(r.clone())]
+        }
+    }
+
+    pub fn random_in_unit_sphere() -> Vec3 {
+        loop {
+            let v = Vec3::random(-1.0..1.0);
+            if v.length() < 1.0 {
+                return v;
+            }
+        }
+    }
+
+    pub fn random_in_hemisphere(normal: Vec3) -> Vec3 {
+        let in_unit_sphere = Self::random_in_unit_sphere();
+        if in_unit_sphere.dot(normal) > 0.0 {
+            in_unit_sphere
+        } else {
+            // wrong side, so flip it.
+            (-1.0) * in_unit_sphere
+        }
+    }
+}
 
 
 
